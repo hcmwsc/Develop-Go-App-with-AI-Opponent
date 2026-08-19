@@ -1,0 +1,64 @@
+{
+  "name": "weiqi-desktop",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Weiqi (Go) AI desktop app wrapper around the React frontend.",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "dist": "electron-builder",
+    "dist:win": "electron-builder --win --x64",
+    "dist:mac": "electron-builder --mac",
+    "dist:linux": "electron-builder --linux"
+  },
+  "build": {
+    "appId": "com.weiqi.desktop",
+    "productName": "围棋 AI",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "../frontend/dist/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "../backend",
+        "to": "backend",
+        "filter": [
+          "app/**/*",
+          "requirements.txt",
+          "run_backend.sh"
+        ]
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ],
+      "artifactName": "WeiqiAI-${version}-Setup.${ext}"
+    },
+    "mac": {
+      "target": ["dmg"],
+      "category": "public.app-category.games"
+    },
+    "linux": {
+      "target": ["AppImage", "deb"],
+      "category": "Game"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  },
+  "devDependencies": {
+    "electron": "^33.2.1",
+    "electron-builder": "^25.1.8"
+  }
+}
