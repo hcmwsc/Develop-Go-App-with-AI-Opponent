@@ -164,7 +164,7 @@ export const localGame = {
     return {
       engine: "mcts-js (内置本地 AI，离线可用)",
       katago_available: false,
-      mcts_simulations: 4000,
+      mcts_simulations: 6000,
       difficulties: ["beginner", "easy", "medium", "hard"],
     };
   },

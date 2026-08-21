@@ -298,20 +298,21 @@ export interface AnalysisResult {
 
 type Difficulty = "beginner" | "easy" | "medium" | "hard";
 
-// Tuned for WebView/CPU. Even on a midrange phone, 4000 simulations of
-// 19x19 board with rollouts up to 220 depth fit comfortably in ~8s,
-// which is acceptable for a "hard" level that waits.
+// Tuned for WebView/CPU. Boosted simulation counts give ~50% more search
+// per move vs previous config, with longer deadlines for hard/medium.
+// Even on a midrange phone, 6000 simulations of 19x19 board with rollouts
+// up to 300 depth fit comfortably in ~15s.
 const DIFFICULTY_PRESETS: Record<Difficulty, [number, number, number, number]> = {
-  beginner: [120, 80, 1.60, 2.0],
-  easy: [500, 150, 1.30, 4.0],
-  medium: [1600, 220, 1.10, 7.0],
-  hard: [4000, 280, 0.95, 12.0],
+  beginner: [200, 100, 1.60, 3.0],
+  easy: [800, 180, 1.30, 5.0],
+  medium: [3000, 250, 1.10, 10.0],
+  hard: [6000, 300, 0.95, 15.0],
 };
 const AMAF_EQUIV: Record<Difficulty, number> = {
-  beginner: 120,
-  easy: 150,
-  medium: 200,
-  hard: 320,
+  beginner: 150,
+  easy: 200,
+  medium: 280,
+  hard: 400,
 };
 const MAX_CANDIDATES: Record<Difficulty, number> = {
   beginner: 40,
