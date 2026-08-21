@@ -31,7 +31,8 @@
         "filter": [
           "app/**/*",
           "requirements.txt",
-          "run_backend.sh"
+          "run_backend.sh",
+          "dist/WeiqiAI/**/*"
         ]
       }
     ],

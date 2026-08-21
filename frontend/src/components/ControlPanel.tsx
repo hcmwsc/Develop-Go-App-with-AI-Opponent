@@ -1,4 +1,5 @@
 import type { GameState, CandidateMove, EngineStatus, Player, Difficulty } from "../types";
+import { setApiUrl } from "../config";
 
 interface ControlPanelProps {
   game: GameState | null;
@@ -223,6 +224,24 @@ export function ControlPanel({
         <div className="info-row">
           <span className="label">当前胜率</span>
           <span>{(winrate * 100).toFixed(1)}%</span>
+        </div>
+      </div>
+
+      <div className="panel">
+        <h3>服务器设置</h3>
+        <div className="field">
+          <label>后端地址</label>
+          <input
+            type="text"
+            placeholder="如 http://192.168.1.100:8000"
+            defaultValue={typeof localStorage !== "undefined" ? localStorage.getItem("weiqi_api_url") || "" : ""}
+            onChange={(e) => setApiUrl(e.target.value.trim())}
+          />
+        </div>
+        <div className="info-row">
+          <span className="label" style={{ fontSize: "0.8em", color: "var(--text-dim)" }}>
+            留空 = 同源（桌面端内嵌后端）。手机端填写电脑 IP:端口。
+          </span>
         </div>
       </div>
     </div>

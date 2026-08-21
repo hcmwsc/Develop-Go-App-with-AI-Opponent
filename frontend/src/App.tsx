@@ -3,7 +3,8 @@ import { Board } from "./components/Board";
 import { ControlPanel } from "./components/ControlPanel";
 import { WinrateBar } from "./components/WinrateBar";
 import { ReviewPanel } from "./components/ReviewPanel";
-import { api } from "./ai/apiClient";
+import { api, forceMode } from "./ai/apiClient";
+import { needsBackendConfig } from "./config";
 import { BLACK, WHITE, GoBoard } from "./game/goEngine";
 import type {
   GameState,
@@ -28,6 +29,7 @@ export default function App() {
   const [showCandidates, setShowCandidates] = useState(true);
   const [showHeatmap, setShowHeatmap] = useState(false);
   const [winrate, setWinrate] = useState<number>(0.5);
+  const [backendMissing, setBackendMissing] = useState(false);
   const [candidates, setCandidates] = useState<CandidateMove[]>([]);
   const [scoreLead, setScoreLead] = useState<number | null>(null);
   const [lastMove, setLastMove] = useState<MoveInfo | null>(null);
@@ -40,6 +42,24 @@ export default function App() {
   // 复盘模式
   const [reviewData, setReviewData] = useState<ReviewData | null>(null);
   const [reviewStep, setReviewStep] = useState(0);
+
+  useEffect(() => {
+    // 周期检测：用户在「服务器设置」填完地址后自动清除提示
+    // 但在「本地 AI 模式」下不需要任何后端配置，直接隐藏提示
+    const check = () => {
+      try {
+        const v = localStorage.getItem("weiqi_use_local_ai");
+        if (v === "1") {
+          setBackendMissing(false);
+          return;
+        }
+      } catch { /* ignore */ }
+      setBackendMissing(needsBackendConfig());
+    };
+    check();
+    const iv = setInterval(check, 1500);
+    return () => clearInterval(iv);
+  }, []);
 
   useEffect(() => {
     api.engineStatus().then(setEngineInfo).catch(() => {});
@@ -90,6 +110,23 @@ export default function App() {
 
   const startGame = useCallback(async () => {
     setError(null);
+    // 本地 AI 模式直接开始，不检查后端地址
+    try {
+      const v = localStorage.getItem("weiqi_use_local_ai");
+      const mode = v === "1" ? "local" : v === "0" ? "remote" : "auto";
+      if (mode === "local") {
+        setBackendMissing(false);
+      } else if (needsBackendConfig()) {
+        setBackendMissing(true);
+        setError("请先在「服务器设置」中填写后端地址，如 http://192.168.1.100:8000，或切换为「本地内置 AI」模式");
+        return;
+      }
+    } catch {
+      if (needsBackendConfig()) {
+        setBackendMissing(true);
+        return;
+      }
+    }
     setThinking(false);
     setLastMove(null);
     setCandidates([]);
@@ -280,8 +317,13 @@ export default function App() {
   const reviewWinrate = useMemo(() => {
     if (!reviewData || reviewStep === 0) return 0.5;
     const e = reviewData.entries[reviewStep - 1];
-    return e?.post_winrate ?? 0.5;
-  }, [reviewData, reviewStep]);
+    if (!e || e.post_winrate == null) return 0.5;
+    // 后端 ReviewEntry.post_winrate = 该步走子方 (entry.color) 视角的胜率；
+    // WinrateBar 始终需要「玩家视角」的胜率（与对局模式 resp.winrate 语义一致），
+    // 因此如果该步是 AI 走子，要把 AI 视角翻转为玩家视角。
+    const humanColor = reviewData.human_color ?? config.playerColor;
+    return e.color === humanColor ? e.post_winrate : 1 - e.post_winrate;
+  }, [reviewData, reviewStep, config.playerColor]);
 
   const humanColor = config.playerColor === "black" ? BLACK : WHITE;
   const aiTurn = game ? game.to_move !== config.playerColor : false;
@@ -365,6 +407,32 @@ export default function App() {
         ) : (
           game && <WinrateBar winrate={winrate} perspective={config.playerColor} />
         )}
+        {backendMissing && !game && (
+          <div style={{
+            background: "var(--accent-dim)",
+            border: "2px solid var(--accent)",
+            borderRadius: 8,
+            padding: "12px 16px",
+            margin: "10px 0",
+            fontSize: "0.95em",
+            lineHeight: 1.6,
+          }}>
+            <strong style={{ color: "var(--accent)", display: "block", marginBottom: 6 }}>⚠️ 需要配置后端地址或启用本地 AI</strong>
+            <div>当前为「远程后端」模式（Auto 检测未发现后端），请选择其一：</div>
+            <div style={{ marginTop: 8, fontSize: "0.92em", color: "var(--text-dim)" }}>
+              <strong>方案 A（推荐，无需电脑）</strong>：切换为 <strong>「本地内置 AI」</strong>，直接在手机/WebView 内运行 MCTS，不依赖任何后端。
+              <button
+                style={{ marginLeft: 10, padding: "4px 10px" }}
+                onClick={() => { forceMode("local"); setBackendMissing(false); }}
+              >启用本地 AI</button>
+              <br/>
+              <strong>方案 B（连电脑，更强 AI）</strong>：
+              <br/>1. 确保手机和电脑在同一 WiFi
+              <br/>2. 右侧「服务器设置」填写电脑 IP，如 <code>http://192.168.1.100:8000</code>
+              <br/>3. 电脑启动后端：<code>python -m uvicorn app.main:app --host 0.0.0.0</code>
+            </div>
+          </div>
+        )}
         {error && <div className="error-msg">{error}</div>}
       </div>
 
@@ -372,6 +440,7 @@ export default function App() {
         <ReviewPanel
           data={reviewData}
           step={reviewStep}
+          humanColor={reviewData.human_color ?? config.playerColor}
           onStepChange={setReviewStep}
         />
       ) : (

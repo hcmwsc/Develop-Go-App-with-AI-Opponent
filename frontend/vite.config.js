@@ -17,10 +17,13 @@ export default defineConfig({
             "/api": {
                 target: process.env.VITE_API_URL || "http://127.0.0.1:8000",
                 changeOrigin: true,
+                timeout: 60000, // 60s 超时，容纳 MCTS 分析
+                proxyTimeout: 60000,
             },
             "/health": {
                 target: process.env.VITE_API_URL || "http://127.0.0.1:8000",
                 changeOrigin: true,
+                timeout: 10000,
             },
         },
     },

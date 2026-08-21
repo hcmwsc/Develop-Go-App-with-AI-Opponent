@@ -11,6 +11,9 @@ const config: CapacitorConfig = {
   server: {
     // Allow cleartext only in dev; production should use HTTPS backend.
     cleartext: true,
+    // Use http scheme so WebView can make HTTP API requests without
+    // mixed-content blocking (https→http is blocked by default).
+    androidScheme: "http",
   },
 };
 

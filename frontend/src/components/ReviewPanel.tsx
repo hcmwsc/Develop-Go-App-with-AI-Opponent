@@ -1,9 +1,10 @@
 import { useEffect, useRef, useMemo } from "react";
-import type { ReviewData, ReviewEntry } from "../types";
+import type { ReviewData, ReviewEntry, Player } from "../types";
 
 interface ReviewPanelProps {
   data: ReviewData;
   step: number; // 0 = 初始局面, 1..N = 走完第 step 步后
+  humanColor: Player; // 玩家执色，用于把走子方视角胜率统一为「玩家视角」展示
   onStepChange: (step: number) => void;
 }
 
@@ -13,7 +14,13 @@ function blackView(wr: number | null, color: string): number | null {
   return color === "black" ? wr : 1 - wr;
 }
 
-export function ReviewPanel({ data, step, onStepChange }: ReviewPanelProps) {
+/** 把走子方视角胜率换算为玩家（humanColor）视角，用于侧栏数值展示。 */
+function toHumanView(wr: number | null, moveColor: Player, humanColor: Player): number | null {
+  if (wr === null) return null;
+  return moveColor === humanColor ? wr : 1 - wr;
+}
+
+export function ReviewPanel({ data, step, humanColor, onStepChange }: ReviewPanelProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const total = data.entries.length;
 
@@ -151,18 +158,18 @@ export function ReviewPanel({ data, step, onStepChange }: ReviewPanelProps) {
               </span>
             </div>
             <div className="info-row">
-              <span className="label">走子前胜率</span>
+              <span className="label">走子前胜率（玩家视角）</span>
               <span>
                 {current.pre_winrate !== null
-                  ? (current.pre_winrate * 100).toFixed(1) + "%"
+                  ? (toHumanView(current.pre_winrate, current.color, humanColor)! * 100).toFixed(1) + "%"
                   : "—"}
               </span>
             </div>
             <div className="info-row">
-              <span className="label">走子后胜率</span>
+              <span className="label">走子后胜率（玩家视角）</span>
               <span>
                 {current.post_winrate !== null
-                  ? (current.post_winrate * 100).toFixed(1) + "%"
+                  ? (toHumanView(current.post_winrate, current.color, humanColor)! * 100).toFixed(1) + "%"
                   : "—"}
               </span>
             </div>

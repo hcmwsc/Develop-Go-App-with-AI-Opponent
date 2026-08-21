@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: weiqi-ai-backend
+    runtime: python
+    plan: free
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: GO_HOST
+        value: 0.0.0.0
+      - key: GO_CORS_ORIGINS
+        value: "*"
+      - key: GO_MCTS_SIMS
+        value: "500"
+      - key: PYTHON_VERSION
+        value: "3.12.6"

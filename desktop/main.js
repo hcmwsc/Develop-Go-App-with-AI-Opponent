@@ -49,14 +49,31 @@ function startBackend() {
     // In dev, the backend is started separately via `uvicorn app.main:app`.
     return Promise.resolve();
   }
+  // 生产模式优先使用 PyInstaller 打包的后端可执行文件，
+  // 兼容回退到 python3 -m uvicorn（需要目标机器有 Python 环境）
   const backendDir = path.join(process.resourcesPath, "backend");
-  // Try python3 then python
-  const py = process.env.WEIQI_PYTHON || "python3";
-  pyProc = spawn(
-    py,
-    ["-m", "uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", String(BACKEND_PORT)],
-    { cwd: backendDir, stdio: ["ignore", "pipe", "pipe"] }
-  );
+  const exeName = process.platform === "win32" ? "WeiqiAI.exe" : "WeiqiAI";
+  const pyinstallerExe = path.join(backendDir, "WeiqiAI", exeName);
+  const pyinstallerAlt = path.join(backendDir, exeName);
+
+  let cmd, args;
+  if (require("fs").existsSync(pyinstallerExe)) {
+    cmd = pyinstallerExe;
+    args = [];
+  } else if (require("fs").existsSync(pyinstallerAlt)) {
+    cmd = pyinstallerAlt;
+    args = [];
+  } else {
+    // Fallback: 原始 Python 方式
+    cmd = process.env.WEIQI_PYTHON || "python3";
+    args = ["-m", "uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", String(BACKEND_PORT)];
+  }
+
+  pyProc = spawn(cmd, args, {
+    cwd: backendDir,
+    stdio: ["ignore", "pipe", "pipe"],
+    env: { ...process.env, WEIQI_PORT: String(BACKEND_PORT) },
+  });
   pyProc.stdout.on("data", (d) => process.stdout.write(`[backend] ${d}`));
   pyProc.stderr.on("data", (d) => process.stderr.write(`[backend] ${d}`));
   pyProc.on("exit", (code) => console.log(`Backend exited with ${code}`));
@@ -88,7 +105,9 @@ function createWindow() {
     mainWindow.loadURL("http://localhost:5173");
     mainWindow.webContents.openDevTools({ mode: "detach" });
   } else {
-    mainWindow.loadFile(path.join(__dirname, "..", "frontend", "dist", "index.html"));
+    // 生产模式：FastAPI 自身已 mount 前端静态文件，直接加载后端 URL
+    // 这样所有 /api 请求同源，无需 CORS 或代理
+    mainWindow.loadURL(`${BACKEND_URL}/`);
   }
 }
 
